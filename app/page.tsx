@@ -15,6 +15,7 @@ export default function Home() {
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null)
   const [episodes, setEpisodes] = useState<Episode[]>([])
   const [currentEpisode, setCurrentEpisode] = useState<Episode | null>(null)
+  const [selectedEpisodeGuid, setSelectedEpisodeGuid] = useState<string | null>(null)
 
   const [isSearching, setIsSearching] = useState(false)
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false)
@@ -61,6 +62,7 @@ export default function Home() {
   const handleTranscribe = async (episode: Episode) => {
     if (!episode.enclosure?.url) return
 
+    setSelectedEpisodeGuid(episode.guid)
     setIsTranscribing(true)
     setTranscriptionText("")
     setTranscriptionStatus("Initializing...")
@@ -71,7 +73,8 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           audioUrl: episode.enclosure.url,
-          title: episode.title
+          title: episode.title,
+          episodeGuid: episode.guid
         }),
       })
 
@@ -238,7 +241,7 @@ export default function Home() {
         {/* Right: AI Panel */}
         {transcriptionText && (
           <div className="w-96 border-l border-gray-800 bg-gray-900/50">
-            <AIPanel transcript={transcriptionText} />
+            <AIPanel transcript={transcriptionText} episodeGuid={selectedEpisodeGuid || undefined} />
           </div>
         )}
       </div>

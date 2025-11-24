@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
+import { getCachedChat, saveCachedChat } from "@/lib/cache"
 
 export async function POST(request: Request) {
-    const { messages, transcript } = await request.json()
+    const { messages, transcript, episodeGuid } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
         return NextResponse.json({ error: "Messages required" }, { status: 400 })
@@ -16,6 +17,15 @@ export async function POST(request: Request) {
             }
 
             try {
+                // Load existing chat history from cache
+                let chatHistory: Array<{ role: string; content: string }> = []
+                if (episodeGuid) {
+                    const cachedChat = await getCachedChat(episodeGuid)
+                    if (cachedChat) {
+                        chatHistory = cachedChat
+                    }
+                }
+
                 // Build system prompt with transcript context
                 const systemMessage = {
                     role: "system",
@@ -24,7 +34,9 @@ export async function POST(request: Request) {
                         : "You are a helpful AI assistant."
                 }
 
-                const apiMessages = [systemMessage, ...messages]
+                // Combine history with new messages (only user messages from new request)
+                const newUserMessage = messages[messages.length - 1]
+                const apiMessages = [systemMessage, ...chatHistory, newUserMessage]
 
                 const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
                     method: "POST",
@@ -33,7 +45,7 @@ export async function POST(request: Request) {
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        model: "Qwen/Qwen2.5-72B-Instruct",
+                        model: "deepseek-ai/DeepSeek-V3.2-Exp",
                         messages: apiMessages,
                         stream: true,
                         max_tokens: 2048,
@@ -51,6 +63,7 @@ export async function POST(request: Request) {
                 const reader = response.body.getReader()
                 const decoder = new TextDecoder()
                 let buffer = ""
+                let assistantResponse = ""
 
                 while (true) {
                     const { done, value } = await reader.read()
@@ -72,12 +85,27 @@ export async function POST(request: Request) {
                                 const parsed = JSON.parse(data)
                                 const content = parsed.choices?.[0]?.delta?.content
                                 if (content) {
+                                    assistantResponse += content
                                     sendEvent({ content })
                                 }
                             } catch (e) {
                                 // Skip parsing errors
                             }
                         }
+                    }
+                }
+
+                // Save updated chat history to cache
+                if (episodeGuid && assistantResponse) {
+                    const updatedHistory = [
+                        ...chatHistory,
+                        newUserMessage,
+                        { role: "assistant", content: assistantResponse }
+                    ]
+                    try {
+                        await saveCachedChat(episodeGuid, updatedHistory)
+                    } catch (cacheError) {
+                        console.error("Failed to cache chat:", cacheError)
                     }
                 }
             } catch (error: any) {

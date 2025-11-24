@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import fs from "fs/promises"
 import path from "path"
+import { getCachedTranscript, saveCachedTranscript } from "@/lib/cache"
 
 // This is a simplified implementation. 
 // For a real production app, we would need a proper job queue (Redis/Bull) 
@@ -13,7 +14,7 @@ function sanitizeFilename(name: string) {
 }
 
 export async function POST(request: Request) {
-    const { audioUrl, title } = await request.json()
+    const { audioUrl, title, episodeGuid } = await request.json()
 
     if (!audioUrl) {
         return NextResponse.json({ error: "Audio URL required" }, { status: 400 })
@@ -28,6 +29,17 @@ export async function POST(request: Request) {
             }
 
             try {
+                // Check cache first
+                if (episodeGuid) {
+                    const cachedTranscript = await getCachedTranscript(episodeGuid)
+                    if (cachedTranscript) {
+                        sendEvent({ status: "Loaded from cache", text: cachedTranscript })
+                        sendEvent({ status: "Completed", text: cachedTranscript })
+                        controller.close()
+                        return
+                    }
+                }
+
                 // 1. Download Audio
                 sendEvent({ status: "Downloading audio...", text: "" })
 
@@ -57,7 +69,20 @@ export async function POST(request: Request) {
 
                 const result = await response.json()
 
-                // 3. Save to File
+                // 3. Save to cache
+                if (episodeGuid && result.text) {
+                    try {
+                        await saveCachedTranscript(episodeGuid, result.text, {
+                            title: title || 'Unknown Episode',
+                            podcastId: episodeGuid.split('-')[0] || 'unknown',
+                            enclosureUrl: audioUrl,
+                        })
+                    } catch (cacheError) {
+                        console.error("Failed to cache transcript:", cacheError)
+                    }
+                }
+
+                // 4. Save to File (legacy)
                 let savedPath = ""
                 if (title && result.text) {
                     try {
@@ -75,7 +100,7 @@ export async function POST(request: Request) {
                     }
                 }
 
-                // 4. Send Result
+                // 5. Send Result
                 sendEvent({ status: "Completed", text: result.text, savedPath })
 
             } catch (error: any) {

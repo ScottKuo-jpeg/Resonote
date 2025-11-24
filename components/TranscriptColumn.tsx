@@ -29,7 +29,7 @@ export function TranscriptColumn({ text, onSeek }: TranscriptColumnProps) {
 
     return (
         <div className="h-full overflow-y-auto p-6 space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6 sticky top-0 bg-gray-900 pb-2 border-b border-gray-800">
+            <h2 className="text-2xl font-bold text-white mb-6 pb-2 border-b border-gray-800">
                 Transcript
             </h2>
             {paragraphs.map((para, idx) => (

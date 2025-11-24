@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 
 interface AIPanelProps {
     transcript: string
+    episodeGuid?: string
 }
 
 type Tab = "summary" | "mindmap" | "chat"
@@ -15,7 +16,7 @@ interface Message {
     content: string
 }
 
-export function AIPanel({ transcript }: AIPanelProps) {
+export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
     const [activeTab, setActiveTab] = useState<Tab>("summary")
     const [summary, setSummary] = useState("")
     const [mindmap, setMindmap] = useState("")
@@ -31,7 +32,7 @@ export function AIPanel({ transcript }: AIPanelProps) {
             const res = await fetch("/api/summarize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ transcript }),
+                body: JSON.stringify({ transcript, episodeGuid }),
             })
             const data = await res.json()
             setSummary(data.summary || "Failed to generate summary")
@@ -49,7 +50,7 @@ export function AIPanel({ transcript }: AIPanelProps) {
             const res = await fetch("/api/mindmap", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ transcript }),
+                body: JSON.stringify({ transcript, episodeGuid }),
             })
             const data = await res.json()
             setMindmap(data.mindmap || "Failed to generate mindmap")
@@ -75,6 +76,7 @@ export function AIPanel({ transcript }: AIPanelProps) {
                 body: JSON.stringify({
                     messages: [...messages, userMessage],
                     transcript,
+                    episodeGuid,
                 }),
             })
 

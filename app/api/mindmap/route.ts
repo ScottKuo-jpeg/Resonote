@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server"
+import { getCachedMindmap, saveCachedMindmap } from "@/lib/cache"
 
 export async function POST(request: Request) {
-    const { transcript } = await request.json()
+    const { transcript, episodeGuid } = await request.json()
 
     if (!transcript) {
         return NextResponse.json({ error: "Transcript required" }, { status: 400 })
+    }
+
+    // Check cache first
+    if (episodeGuid) {
+        const cachedMindmap = await getCachedMindmap(episodeGuid)
+        if (cachedMindmap) {
+            return NextResponse.json({ mindmap: cachedMindmap, cached: true })
+        }
     }
 
     try {
@@ -15,7 +24,7 @@ export async function POST(request: Request) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "Qwen/Qwen2.5-72B-Instruct",
+                model: "deepseek-ai/DeepSeek-V3.2-Exp",
                 messages: [
                     {
                         role: "system",
@@ -36,6 +45,15 @@ export async function POST(request: Request) {
 
         const data = await response.json()
         const mindmap = data.choices?.[0]?.message?.content || "Failed to generate mindmap"
+
+        // Save to cache
+        if (episodeGuid) {
+            try {
+                await saveCachedMindmap(episodeGuid, mindmap)
+            } catch (cacheError) {
+                console.error("Failed to cache mindmap:", cacheError)
+            }
+        }
 
         return NextResponse.json({ mindmap })
     } catch (error: any) {

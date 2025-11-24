@@ -1,10 +1,19 @@
 import { NextResponse } from "next/server"
+import { getCachedSummary, saveCachedSummary } from "@/lib/cache"
 
 export async function POST(request: Request) {
-    const { transcript } = await request.json()
+    const { transcript, episodeGuid } = await request.json()
 
     if (!transcript) {
         return NextResponse.json({ error: "Transcript required" }, { status: 400 })
+    }
+
+    // Check cache first
+    if (episodeGuid) {
+        const cachedSummary = await getCachedSummary(episodeGuid)
+        if (cachedSummary) {
+            return NextResponse.json({ summary: cachedSummary, cached: true })
+        }
     }
 
     try {
@@ -15,7 +24,7 @@ export async function POST(request: Request) {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                model: "Qwen/Qwen2.5-72B-Instruct",
+                model: "deepseek-ai/DeepSeek-V3.2-Exp",
                 messages: [
                     {
                         role: "system",
@@ -36,6 +45,15 @@ export async function POST(request: Request) {
 
         const data = await response.json()
         const summary = data.choices?.[0]?.message?.content || "Failed to generate summary"
+
+        // Save to cache
+        if (episodeGuid) {
+            try {
+                await saveCachedSummary(episodeGuid, summary)
+            } catch (cacheError) {
+                console.error("Failed to cache summary:", cacheError)
+            }
+        }
 
         return NextResponse.json({ summary })
     } catch (error: any) {
