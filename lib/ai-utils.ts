@@ -32,7 +32,7 @@ async function callLLM(messages: any[], model: string = "deepseek-ai/DeepSeek-V3
         body: JSON.stringify({
             model,
             messages,
-            max_tokens: 2048,
+            max_tokens: 20000,
         }),
     })
 

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { getCachedChat, saveCachedChat } from "@/lib/cache"
+import { getCachedChatHistory, saveCachedChatHistory } from "@/lib/cache"
+import { PROMPTS } from "@/lib/prompts"
 
 export async function POST(request: Request) {
     const { messages, transcript, episodeGuid } = await request.json()
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
     const stream = new ReadableStream({
         async start(controller) {
             const sendEvent = (data: any) => {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+                controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)} \n\n`))
             }
 
             try {
@@ -35,9 +36,7 @@ export async function POST(request: Request) {
 
                 const systemMessage = {
                     role: "system",
-                    content: safeTranscript
-                        ? `You are a helpful AI assistant analyzing a podcast transcript. Here is the transcript:\n\n${safeTranscript}\n\nAnswer questions based on this transcript.`
-                        : "You are a helpful AI assistant."
+                    content: PROMPTS.chat.system(safeTranscript)
                 }
 
                 // Combine history with new messages (only user messages from new request)
@@ -47,19 +46,19 @@ export async function POST(request: Request) {
                 const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
                     method: "POST",
                     headers: {
-                        "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY}`,
+                        "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY} `,
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
                         model: "deepseek-ai/DeepSeek-V3.2-Exp",
                         messages: apiMessages,
                         stream: true,
-                        max_tokens: 20000,
+                        max_tokens: 30000,
                     }),
                 })
 
                 if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`)
+                    throw new Error(`API Error: ${response.status} `)
                 }
 
                 if (!response.body) {

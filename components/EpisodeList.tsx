@@ -15,9 +15,9 @@ export interface Episode {
 
 interface EpisodeListProps {
     episodes: Episode[]
-    onPlay: (episode: Episode) => void
+    onEpisodeSelect: (episode: Episode) => void
     onTranscribe: (episode: Episode) => void
-    currentEpisodeGuid?: string
+    selectedEpisodeGuid?: string
 }
 
 export function EpisodeList({ episodes, onPlay, onTranscribe, currentEpisodeGuid }: EpisodeListProps) {
@@ -51,14 +51,20 @@ export function EpisodeList({ episodes, onPlay, onTranscribe, currentEpisodeGuid
 
                         <div className="flex flex-col gap-2 shrink-0">
                             <button
-                                onClick={() => onPlay(episode)}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onPlay(episode)
+                                }}
                                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                                 title="Play"
                             >
                                 <Play className="h-4 w-4 fill-current" />
                             </button>
                             <button
-                                onClick={() => onTranscribe(episode)}
+                                onClick={(e) => {
+                                    e.stopPropagation()
+                                    onTranscribe(episode)
+                                }}
                                 className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
                                 title="Transcribe"
                             >

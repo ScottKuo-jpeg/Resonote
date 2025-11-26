@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCachedSummary, saveCachedSummary } from "@/lib/cache"
+import { PROMPTS } from "@/lib/prompts"
 
 export async function POST(request: Request) {
     const { transcript, episodeGuid } = await request.json()
@@ -28,14 +29,14 @@ export async function POST(request: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert at analyzing podcast content. Generate concise, structured summaries."
+                        content: PROMPTS.summary.system
                     },
                     {
                         role: "user",
-                        content: `Please analyze this podcast transcript and provide:\n1. A brief overview (2-3 sentences)\n2. Key topics discussed (bullet points)\n3. Main takeaways (3-5 points)\n\nTranscript:\n${transcript}`
+                        content: PROMPTS.summary.user(transcript)
                     }
                 ],
-                max_tokens: 1500,
+                max_tokens: 30000,
             }),
         })
 

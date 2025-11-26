@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 interface AIPanelProps {
     transcript: string
     episodeGuid?: string
+    disabled?: boolean
 }
 
 type Tab = "summary" | "mindmap" | "chat"

@@ -214,6 +214,7 @@ export default function Home() {
                     onPlay={setCurrentEpisode}
                     onTranscribe={handleTranscribe}
                     currentEpisodeGuid={currentEpisode?.guid}
+                    selectedEpisodeGuid={currentEpisode?.guid}
                   />
                 )}
               </div>
@@ -251,8 +252,12 @@ export default function Home() {
 
         {/* Right: AI Panel */}
         {transcriptionText && (
-          <div className="w-96 border-l border-gray-800 bg-gray-900/50">
-            <AIPanel transcript={transcriptionText} episodeGuid={selectedEpisodeGuid || undefined} />
+          <div className="lg:col-span-1 h-[600px] lg:h-auto">
+            <AIPanel
+              transcript={transcriptionText}
+              episodeGuid={currentEpisode?.guid || ""}
+              disabled={isTranscribing || !transcriptionText || transcriptionStatus !== "Completed"}
+            />
           </div>
         )}
       </div>

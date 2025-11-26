@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { getCachedMindmap, saveCachedMindmap } from "@/lib/cache"
+import { PROMPTS } from "@/lib/prompts"
 
 export async function POST(request: Request) {
     const { transcript, episodeGuid } = await request.json()
@@ -28,14 +29,14 @@ export async function POST(request: Request) {
                 messages: [
                     {
                         role: "system",
-                        content: "You are an expert at creating structured mindmaps from podcast content."
+                        content: PROMPTS.mindmap.system
                     },
                     {
                         role: "user",
-                        content: `Create a hierarchical mindmap in markdown format for this podcast transcript. Use nested bullet points with indentation to show relationships. Focus on main topics, subtopics, and key details.\n\nTranscript:\n${transcript}`
+                        content: PROMPTS.mindmap.user(transcript)
                     }
                 ],
-                max_tokens: 20000,
+                max_tokens: 30000,
             }),
         })
 
