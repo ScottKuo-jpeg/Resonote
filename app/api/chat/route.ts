@@ -27,10 +27,16 @@ export async function POST(request: Request) {
                 }
 
                 // Build system prompt with transcript context
+                // Truncate transcript if too long (DeepSeek has 32k context, approx 100k chars, but let's be safe with 50k)
+                const maxTranscriptLength = 50000
+                const safeTranscript = transcript.length > maxTranscriptLength
+                    ? transcript.substring(0, maxTranscriptLength) + "\n...(truncated)..."
+                    : transcript
+
                 const systemMessage = {
                     role: "system",
-                    content: transcript
-                        ? `You are a helpful AI assistant analyzing a podcast transcript. Here is the transcript:\n\n${transcript}\n\nAnswer questions based on this transcript.`
+                    content: safeTranscript
+                        ? `You are a helpful AI assistant analyzing a podcast transcript. Here is the transcript:\n\n${safeTranscript}\n\nAnswer questions based on this transcript.`
                         : "You are a helpful AI assistant."
                 }
 
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
                         model: "deepseek-ai/DeepSeek-V3.2-Exp",
                         messages: apiMessages,
                         stream: true,
-                        max_tokens: 2048,
+                        max_tokens: 20000,
                     }),
                 })
 

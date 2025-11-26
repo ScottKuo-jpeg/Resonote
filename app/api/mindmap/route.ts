@@ -35,7 +35,7 @@ export async function POST(request: Request) {
                         content: `Create a hierarchical mindmap in markdown format for this podcast transcript. Use nested bullet points with indentation to show relationships. Focus on main topics, subtopics, and key details.\n\nTranscript:\n${transcript}`
                     }
                 ],
-                max_tokens: 1500,
+                max_tokens: 20000,
             }),
         })
 

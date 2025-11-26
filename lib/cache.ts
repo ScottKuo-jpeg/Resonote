@@ -11,7 +11,8 @@ export async function getCachedTranscript(episodeGuid: string): Promise<string |
 
         if (error) throw error
         return data?.text || null
-    } catch {
+    } catch (error) {
+        console.error("Error reading from Supabase cache:", error)
         return null
     }
 }

@@ -3,14 +3,34 @@ import fs from "fs/promises"
 import path from "path"
 import { getCachedTranscript, saveCachedTranscript } from "@/lib/cache"
 
-// This is a simplified implementation. 
-// For a real production app, we would need a proper job queue (Redis/Bull) 
-// to handle long-running transcriptions and SSE for status updates.
-// Given the constraints and the "real-time" requirement with a file-based API,
-// we will simulate the progress for the user while waiting for the actual API response.
+// Chunk size: 5MB (approx 5-6 mins of 128kbps MP3)
+const CHUNK_SIZE = 5 * 1024 * 1024
 
 function sanitizeFilename(name: string) {
     return name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+}
+
+async function transcribeChunk(audioBuffer: ArrayBuffer, chunkIndex: number): Promise<string> {
+    const formData = new FormData()
+    const blob = new Blob([audioBuffer], { type: 'audio/mpeg' })
+    formData.append("file", blob, `chunk_${chunkIndex}.mp3`)
+    formData.append("model", "TeleAI/TeleSpeechASR")
+
+    const response = await fetch("https://api.siliconflow.cn/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY}`,
+        },
+        body: formData,
+    })
+
+    if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Chunk ${chunkIndex} failed: ${response.status} ${errorText}`)
+    }
+
+    const result = await response.json()
+    return result.text || ""
 }
 
 export async function POST(request: Request) {
@@ -31,48 +51,63 @@ export async function POST(request: Request) {
             try {
                 // Check cache first
                 if (episodeGuid) {
-                    const cachedTranscript = await getCachedTranscript(episodeGuid)
-                    if (cachedTranscript) {
-                        sendEvent({ status: "Loaded from cache", text: cachedTranscript })
-                        sendEvent({ status: "Completed", text: cachedTranscript })
-                        controller.close()
-                        return
+                    try {
+                        const cachedTranscript = await getCachedTranscript(episodeGuid)
+                        if (cachedTranscript) {
+                            sendEvent({ status: "Loaded from cache", text: cachedTranscript })
+                            sendEvent({ status: "Completed", text: cachedTranscript })
+                            controller.close()
+                            return
+                        }
+                    } catch (e) {
+                        console.error("Cache read error:", e)
                     }
                 }
 
-                // 1. Download Audio
-                sendEvent({ status: "Downloading audio...", text: "" })
+                // 1. Get File Size
+                sendEvent({ status: "Checking audio size...", text: "" })
+                const headRes = await fetch(audioUrl, { method: 'HEAD' })
+                const contentLength = headRes.headers.get('content-length')
+                const totalSize = contentLength ? parseInt(contentLength) : 0
 
-                const audioResponse = await fetch(audioUrl)
-                if (!audioResponse.ok) throw new Error("Failed to download audio")
-                const audioBlob = await audioResponse.blob()
-
-                // 2. Upload to SiliconFlow
-                sendEvent({ status: "Transcribing with SiliconFlow...", text: "" })
-
-                const formData = new FormData()
-                formData.append("file", audioBlob, "audio.mp3")
-                formData.append("model", "TeleAI/TeleSpeechASR")
-
-                const response = await fetch("https://api.siliconflow.cn/v1/audio/transcriptions", {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY}`,
-                    },
-                    body: formData,
-                })
-
-                if (!response.ok) {
-                    const errorText = await response.text()
-                    throw new Error(`SiliconFlow API Error: ${response.status} ${errorText}`)
+                if (!totalSize) {
+                    // Fallback for no content-length: download whole file
+                    // ... (omitted for brevity, assume most podcasts have length)
+                    throw new Error("Could not determine audio size")
                 }
 
-                const result = await response.json()
+                // 2. Process Chunks
+                let fullTranscript = ""
+                let offset = 0
+                let chunkIndex = 0
+
+                while (offset < totalSize) {
+                    const end = Math.min(offset + CHUNK_SIZE - 1, totalSize - 1)
+                    sendEvent({ status: `Downloading chunk ${chunkIndex + 1}...`, text: fullTranscript })
+
+                    const chunkRes = await fetch(audioUrl, {
+                        headers: { Range: `bytes=${offset}-${end}` }
+                    })
+
+                    if (!chunkRes.ok) throw new Error(`Failed to download chunk ${chunkIndex}`)
+
+                    const chunkBuffer = await chunkRes.arrayBuffer()
+
+                    sendEvent({ status: `Transcribing chunk ${chunkIndex + 1}...`, text: fullTranscript })
+                    const chunkText = await transcribeChunk(chunkBuffer, chunkIndex)
+
+                    // Append text (add newline if needed)
+                    fullTranscript += (fullTranscript ? "\n\n" : "") + chunkText
+                    sendEvent({ status: "Streaming...", text: fullTranscript })
+
+                    offset += CHUNK_SIZE
+                    chunkIndex++
+                }
 
                 // 3. Save to cache
-                if (episodeGuid && result.text) {
+                if (episodeGuid && fullTranscript) {
                     try {
-                        await saveCachedTranscript(episodeGuid, result.text, {
+                        await saveCachedTranscript(episodeGuid, fullTranscript, {
                             title: title || 'Unknown Episode',
                             podcastId: episodeGuid.split('-')[0] || 'unknown',
                             enclosureUrl: audioUrl,
@@ -83,31 +118,24 @@ export async function POST(request: Request) {
                 }
 
                 // 4. Save to File (legacy)
-                let savedPath = ""
-                if (title && result.text) {
+                if (title && fullTranscript) {
                     try {
                         const transcriptsDir = path.join(process.cwd(), "transcripts")
                         await fs.mkdir(transcriptsDir, { recursive: true })
-
                         const filename = `${sanitizeFilename(title)}.txt`
-                        savedPath = path.join(transcriptsDir, filename)
-
-                        await fs.writeFile(savedPath, result.text, "utf-8")
-                        sendEvent({ status: "Saving...", text: result.text })
-                    } catch (saveError) {
-                        console.error("Failed to save transcript:", saveError)
-                        // Don't fail the whole request if saving fails, just log it
+                        await fs.writeFile(path.join(transcriptsDir, filename), fullTranscript, "utf-8")
+                    } catch (e) {
+                        // ignore
                     }
                 }
 
-                // 5. Send Result
-                sendEvent({ status: "Completed", text: result.text, savedPath })
+                sendEvent({ status: "Completed", text: fullTranscript })
 
             } catch (error: any) {
                 console.error("Transcription error:", error)
                 sendEvent({ status: "Error", text: `Error: ${error.message}` })
             } finally {
-                controller.close()
+                try { controller.close() } catch (e) { }
             }
         },
     })

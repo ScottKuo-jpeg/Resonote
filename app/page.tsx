@@ -115,7 +115,8 @@ export default function Home() {
       }
     } catch (error) {
       console.error("Transcription failed", error)
-      setTranscriptionStatus("Failed")
+      setTranscriptionStatus("Failed - Click to Retry")
+      setTranscriptionText("") // Clear text on error so UI shows status
     } finally {
       setIsTranscribing(false)
     }
@@ -232,7 +233,17 @@ export default function Home() {
                   <p className="text-lg">{transcriptionStatus}</p>
                 </>
               ) : (
-                <p>Select an episode and click "Transcribe" to begin</p>
+                <div className="text-center">
+                  <p className="mb-4">{transcriptionStatus === "Failed - Click to Retry" ? "Transcription Failed" : "Select an episode and click 'Transcribe' to begin"}</p>
+                  {transcriptionStatus === "Failed - Click to Retry" && (
+                    <button
+                      onClick={() => currentEpisode && handleTranscribe(currentEpisode)}
+                      className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors"
+                    >
+                      Retry Transcription
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           )}
