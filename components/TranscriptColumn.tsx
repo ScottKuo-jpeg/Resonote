@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { generateTimestamps, formatTime, type TimestampedParagraph } from "@/lib/timestamps"
 import { cn } from "@/lib/utils"
+import { GlassContainer } from "@/components/ui/GlassContainer"
 
 interface TranscriptColumnProps {
     text: string
@@ -28,22 +29,23 @@ export function TranscriptColumn({ text, onSeek }: TranscriptColumnProps) {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-6 space-y-6">
-            <h2 className="text-2xl font-bold text-white mb-6 pb-2 border-b border-gray-800">
+        <div className="h-full overflow-y-auto p-6 space-y-6 custom-scrollbar">
+            <h2 className="text-2xl font-bold text-white mb-6 pb-2 border-b border-white/5">
                 Transcript
             </h2>
             {paragraphs.map((para, idx) => (
-                <div
+                <GlassContainer
                     key={idx}
+                    intensity="low"
                     className={cn(
-                        "group p-4 rounded-lg border border-gray-800/50 hover:border-blue-500/50",
-                        "hover:bg-gray-800/30 transition-all cursor-pointer"
+                        "group p-4 cursor-pointer hover:bg-white/5 transition-all duration-300",
+                        "hover:border-violet-500/30 hover:shadow-[0_0_15px_rgba(139,92,246,0.1)]"
                     )}
                     onClick={() => onSeek?.(para.startTime)}
                 >
                     <div className="flex items-start gap-3">
                         <button
-                            className="flex-shrink-0 px-2 py-1 text-xs font-mono text-blue-400 bg-blue-500/10 rounded group-hover:bg-blue-500/20 transition-colors"
+                            className="flex-shrink-0 px-2 py-1 text-xs font-mono text-violet-400 bg-violet-500/10 rounded group-hover:bg-violet-500/20 transition-colors"
                             onClick={(e) => {
                                 e.stopPropagation()
                                 onSeek?.(para.startTime)
@@ -51,11 +53,11 @@ export function TranscriptColumn({ text, onSeek }: TranscriptColumnProps) {
                         >
                             {formatTime(para.startTime)}
                         </button>
-                        <p className="flex-1 text-gray-300 leading-relaxed whitespace-pre-wrap">
+                        <p className="flex-1 text-gray-300 leading-relaxed whitespace-pre-wrap group-hover:text-white transition-colors">
                             {para.text}
                         </p>
                     </div>
-                </div>
+                </GlassContainer>
             ))}
         </div>
     )

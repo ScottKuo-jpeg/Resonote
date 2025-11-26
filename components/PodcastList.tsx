@@ -6,6 +6,7 @@ export interface Podcast {
     artistName: string
     artworkUrl600: string
     feedUrl: string
+    primaryGenreName?: string
 }
 
 interface PodcastListProps {

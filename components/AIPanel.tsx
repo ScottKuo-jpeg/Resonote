@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react"
 import { Sparkles, MessageSquare, Network, Send, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PremiumButton } from "@/components/ui/PremiumButton"
+import { GlassContainer } from "@/components/ui/GlassContainer"
 
 interface AIPanelProps {
     transcript: string
@@ -132,12 +134,19 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
     }
 
     useEffect(() => {
-        if (activeTab === "summary" && !summary) {
+        setSummary("")
+        setMindmap("")
+        setMessages([])
+        setActiveTab("summary")
+    }, [episodeGuid])
+
+    useEffect(() => {
+        if (activeTab === "summary" && !summary && transcript) {
             loadSummary()
-        } else if (activeTab === "mindmap" && !mindmap) {
+        } else if (activeTab === "mindmap" && !mindmap && transcript) {
             loadMindmap()
         }
-    }, [activeTab])
+    }, [activeTab, summary, mindmap, transcript])
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -145,65 +154,76 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
 
     if (!transcript) {
         return (
-            <div className="h-full flex items-center justify-center text-gray-500">
-                <p>Transcribe an episode to enable AI features</p>
+            <div className="h-full flex flex-col items-center justify-center text-gray-500 p-8 text-center">
+                <Sparkles className="w-12 h-12 mb-4 text-gray-600" />
+                <p className="text-lg font-medium mb-2">AI Features Unavailable</p>
+                <p className="text-sm">Transcribe an episode to generate summaries, mindmaps, and chat with the content.</p>
             </div>
         )
     }
 
     return (
-        <div className="h-full flex flex-col bg-gray-900">
+        <div className="h-full flex flex-col bg-transparent">
             {/* Tabs */}
-            <div className="flex border-b border-gray-800">
+            <div className="flex border-b border-white/5">
                 <button
                     onClick={() => setActiveTab("summary")}
                     className={cn(
-                        "flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        "flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden",
                         activeTab === "summary"
-                            ? "text-blue-400 border-b-2 border-blue-400 bg-blue-500/10"
-                            : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                            ? "text-violet-400 bg-white/5"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
                     )}
                 >
                     <Sparkles className="h-4 w-4" />
                     Summary
+                    {activeTab === "summary" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab("mindmap")}
                     className={cn(
-                        "flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        "flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden",
                         activeTab === "mindmap"
-                            ? "text-blue-400 border-b-2 border-blue-400 bg-blue-500/10"
-                            : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                            ? "text-violet-400 bg-white/5"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
                     )}
                 >
                     <Network className="h-4 w-4" />
                     Mindmap
+                    {activeTab === "mindmap" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab("chat")}
                     className={cn(
-                        "flex-1 px-4 py-3 text-sm font-medium transition-colors flex items-center justify-center gap-2",
+                        "flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 flex items-center justify-center gap-2 relative overflow-hidden",
                         activeTab === "chat"
-                            ? "text-blue-400 border-b-2 border-blue-400 bg-blue-500/10"
-                            : "text-gray-400 hover:text-white hover:bg-gray-800/50"
+                            ? "text-violet-400 bg-white/5"
+                            : "text-gray-400 hover:text-white hover:bg-white/5"
                     )}
                 >
                     <MessageSquare className="h-4 w-4" />
                     Chat
+                    {activeTab === "chat" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.5)]" />
+                    )}
                 </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                 {activeTab === "summary" && (
                     <div className="prose prose-invert max-w-none">
                         {isLoading ? (
-                            <div className="flex items-center gap-2 text-gray-400">
+                            <div className="flex items-center gap-2 text-gray-400 animate-pulse">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 Generating summary...
                             </div>
                         ) : (
-                            <div className="whitespace-pre-wrap text-gray-300">{summary}</div>
+                            <div className="whitespace-pre-wrap text-gray-300 leading-relaxed">{summary}</div>
                         )}
                     </div>
                 )}
@@ -211,12 +231,12 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
                 {activeTab === "mindmap" && (
                     <div className="prose prose-invert max-w-none">
                         {isLoading ? (
-                            <div className="flex items-center gap-2 text-gray-400">
+                            <div className="flex items-center gap-2 text-gray-400 animate-pulse">
                                 <Loader2 className="h-4 w-4 animate-spin" />
                                 Generating mindmap...
                             </div>
                         ) : (
-                            <div className="whitespace-pre-wrap text-gray-300 font-mono text-sm">
+                            <div className="whitespace-pre-wrap text-gray-300 font-mono text-sm bg-black/20 p-4 rounded-xl border border-white/5">
                                 {mindmap}
                             </div>
                         )}
@@ -226,20 +246,21 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
                 {activeTab === "chat" && (
                     <div className="space-y-4">
                         {messages.map((msg, idx) => (
-                            <div
+                            <GlassContainer
                                 key={idx}
+                                intensity={msg.role === "user" ? "medium" : "low"}
                                 className={cn(
-                                    "p-4 rounded-lg",
+                                    "p-4 rounded-2xl max-w-[90%]",
                                     msg.role === "user"
-                                        ? "bg-blue-500/10 border border-blue-500/30 ml-8"
-                                        : "bg-gray-800/50 border border-gray-700/50 mr-8"
+                                        ? "ml-auto bg-violet-500/10 border-violet-500/20"
+                                        : "mr-auto"
                                 )}
                             >
-                                <div className="text-xs text-gray-500 mb-1">
+                                <div className="text-xs text-gray-500 mb-1 font-medium uppercase tracking-wider">
                                     {msg.role === "user" ? "You" : "AI Assistant"}
                                 </div>
-                                <div className="text-gray-300 whitespace-pre-wrap">{msg.content}</div>
-                            </div>
+                                <div className="text-gray-200 whitespace-pre-wrap leading-relaxed">{msg.content}</div>
+                            </GlassContainer>
                         ))}
                         <div ref={chatEndRef} />
                     </div>
@@ -248,7 +269,7 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
 
             {/* Chat Input */}
             {activeTab === "chat" && (
-                <div className="p-4 border-t border-gray-800">
+                <div className="p-4 border-t border-white/5 bg-black/20 backdrop-blur-md">
                     <div className="flex gap-2">
                         <input
                             type="text"
@@ -256,20 +277,20 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={(e) => e.key === "Enter" && !isLoading && sendMessage()}
                             placeholder="Ask about this podcast..."
-                            className="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                            className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500/50 transition-all"
                             disabled={isLoading}
                         />
-                        <button
+                        <PremiumButton
                             onClick={sendMessage}
                             disabled={isLoading || !input.trim()}
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-700 disabled:text-gray-500 text-white rounded-lg transition-colors"
+                            className="!px-3"
                         >
                             {isLoading ? (
                                 <Loader2 className="h-5 w-5 animate-spin" />
                             ) : (
                                 <Send className="h-5 w-5" />
                             )}
-                        </button>
+                        </PremiumButton>
                     </div>
                 </div>
             )}
