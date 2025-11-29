@@ -157,6 +157,7 @@ export function Workspace() {
                         transcript={text}
                         episodeGuid={selectedEpisodeGuid || ""}
                         disabled={isTranscribing || !text || status !== "Completed"}
+                        isTranscribing={isTranscribing}
                     />
                 </GlassContainer>
             </div>

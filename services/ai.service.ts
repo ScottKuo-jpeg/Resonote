@@ -1,12 +1,18 @@
 import { CONFIG } from "@/lib/config"
 import { logger } from "@/lib/logger"
 import { withRetry } from "@/lib/retry"
+import { estimateTokens, trackTokenUsage } from "@/lib/token-utils"
 import { ChatMessage } from "@/types"
 
 export class AIService {
     private static async callLLM(messages: any[], model: string = CONFIG.AI.MODELS.CHAT, maxTokens: number = CONFIG.AI.LIMITS.MAX_TOKENS) {
         return withRetry(async () => {
-            logger.info(`Calling LLM with model: ${model}`)
+            // Estimate input tokens
+            const inputText = messages.map(m => m.content).join('\n')
+            const inputTokens = estimateTokens(inputText)
+
+            logger.info(`Calling LLM with model: ${model}`, { estimatedInputTokens: inputTokens })
+
             const response = await fetch(`${CONFIG.AI.BASE_URL}/chat/completions`, {
                 method: "POST",
                 headers: {
@@ -25,7 +31,13 @@ export class AIService {
             }
 
             const data = await response.json()
-            return data.choices?.[0]?.message?.content || ""
+            const content = data.choices?.[0]?.message?.content || ""
+
+            // Track token usage
+            const outputTokens = estimateTokens(content)
+            trackTokenUsage('LLM Call', inputTokens, outputTokens, model)
+
+            return content
         })
     }
 
@@ -37,29 +49,24 @@ export class AIService {
     }
 
     static async generateSummary(transcript: string): Promise<string> {
-        const chunks = this.splitText(transcript, CONFIG.AI.LIMITS.CHUNK_SIZE)
+        logger.info(`Generating summary for transcript (${estimateTokens(transcript)} tokens)`)
 
-        if (chunks.length === 1) {
-            return await this.callLLM([
-                { role: "system", content: "You are an expert podcast summarizer. Provide a structured summary with: 1. Overview, 2. Key Topics, 3. Key Takeaways." },
-                { role: "user", content: `Summarize this transcript:\n\n${chunks[0]}` }
-            ])
-        }
+        // Truncate if exceeds max length
+        const maxLen = CONFIG.AI.LIMITS.MAX_TRANSCRIPT_LENGTH
+        const safeTranscript = transcript.length > maxLen
+            ? transcript.substring(0, maxLen) + "\n\n[内容过长已截断...]"
+            : transcript
 
-        // Map: Summarize each chunk
-        const chunkSummaries = await Promise.all(chunks.map(async (chunk, i) => {
-            return await this.callLLM([
-                { role: "system", content: "Summarize this section of the podcast concisely." },
-                { role: "user", content: `Part ${i + 1}:\n\n${chunk}` }
-            ])
-        }))
-
-        // Reduce: Summarize the summaries
-        const combinedSummary = chunkSummaries.join("\n\n---\n\n")
         return await this.callLLM([
-            { role: "system", content: "You are an expert podcast summarizer. Create a final cohesive summary from these section summaries." },
-            { role: "user", content: `Section Summaries:\n\n${combinedSummary}\n\nProvide a structured final summary with: 1. Overview, 2. Key Topics, 3. Key Takeaways.` }
-        ])
+            {
+                role: "system",
+                content: "You are an expert podcast summarizer. Provide a structured summary with: 1. Overview, 2. Key Topics, 3. Key Takeaways."
+            },
+            {
+                role: "user",
+                content: `Summarize this transcript:\n\n${safeTranscript}`
+            }
+        ], CONFIG.AI.MODELS.CHAT)
     }
 
     static async generateMindmap(transcript: string, systemPrompt: string, userPrompt: (t: string) => string): Promise<string> {
@@ -77,21 +84,4 @@ export class AIService {
         ])
     }
 
-    private static splitText(text: string, maxChunkSize: number): string[] {
-        const chunks: string[] = []
-        let currentChunk = ""
-        const paragraphs = text.split(/\n\n+/)
-
-        for (const paragraph of paragraphs) {
-            if ((currentChunk.length + paragraph.length) > maxChunkSize) {
-                if (currentChunk) chunks.push(currentChunk)
-                currentChunk = paragraph
-            } else {
-                currentChunk += (currentChunk ? "\n\n" : "") + paragraph
-            }
-        }
-
-        if (currentChunk) chunks.push(currentChunk)
-        return chunks
-    }
 }

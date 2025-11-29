@@ -4,32 +4,39 @@ import path from "path"
 import { getCachedTranscript, saveCachedTranscript } from "@/lib/cache"
 import { CONFIG } from "@/lib/config"
 import { logger } from "@/lib/logger"
+import { withRetry } from "@/lib/retry"
 
 function sanitizeFilename(name: string) {
     return name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
 }
 
 async function transcribeChunk(audioBuffer: ArrayBuffer, chunkIndex: number): Promise<string> {
-    const formData = new FormData()
-    const blob = new Blob([audioBuffer], { type: 'audio/mpeg' })
-    formData.append("file", blob, `chunk_${chunkIndex}.mp3`)
-    formData.append("model", CONFIG.AI.MODELS.TRANSCRIBE)
+    return withRetry(async () => {
+        const formData = new FormData()
+        const blob = new Blob([audioBuffer], { type: 'audio/mpeg' })
+        formData.append("file", blob, `chunk_${chunkIndex}.mp3`)
+        formData.append("model", CONFIG.AI.MODELS.TRANSCRIBE)
 
-    const response = await fetch("https://api.siliconflow.cn/v1/audio/transcriptions", {
-        method: "POST",
-        headers: {
-            "Authorization": `Bearer ${CONFIG.AI.API_KEY}`,
-        },
-        body: formData,
+        const response = await fetch("https://api.siliconflow.cn/v1/audio/transcriptions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${CONFIG.AI.API_KEY}`,
+            },
+            body: formData,
+        })
+
+        if (!response.ok) {
+            const errorText = await response.text()
+            throw new Error(`Chunk ${chunkIndex} failed: ${response.status} ${errorText}`)
+        }
+
+        const result = await response.json()
+        return result.text || ""
+    }, {
+        maxRetries: 3,
+        delay: 1000,
+        backoff: 2
     })
-
-    if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Chunk ${chunkIndex} failed: ${response.status} ${errorText}`)
-    }
-
-    const result = await response.json()
-    return result.text || ""
 }
 
 export async function POST(request: Request) {
@@ -76,33 +83,58 @@ export async function POST(request: Request) {
                     throw new Error("Could not determine audio size")
                 }
 
-                // 2. Process Chunks
-                let fullTranscript = ""
-                let offset = 0
-                let chunkIndex = 0
+                // 2. Calculate chunks
+                const chunkSize = CONFIG.TRANSCRIBE.CHUNK_SIZE_BYTES
+                const totalChunks = Math.ceil(totalSize / chunkSize)
+                sendEvent({ status: `准备处理 ${totalChunks} 个音频块...`, text: "" })
 
-                while (offset < totalSize) {
-                    const end = Math.min(offset + CONFIG.TRANSCRIBE.CHUNK_SIZE_BYTES - 1, totalSize - 1)
-                    sendEvent({ status: `Downloading chunk ${chunkIndex + 1}...`, text: fullTranscript })
+                // Track completion progress
+                let completedCount = 0
 
-                    const chunkRes = await fetch(audioUrl, {
-                        headers: { Range: `bytes=${offset}-${end}` }
-                    })
+                // 3. Download and transcribe chunks in parallel (with rate limiting)
+                const chunkPromises: Promise<{ index: number, text: string }>[] = []
 
-                    if (!chunkRes.ok) throw new Error(`Failed to download chunk ${chunkIndex}`)
+                for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+                    const offset = chunkIndex * chunkSize
+                    const end = Math.min(offset + chunkSize - 1, totalSize - 1)
 
-                    const chunkBuffer = await chunkRes.arrayBuffer()
+                    const promise = (async (idx: number) => {
+                        // Download chunk
+                        const chunkRes = await fetch(audioUrl, {
+                            headers: { Range: `bytes=${offset}-${end}` }
+                        })
 
-                    sendEvent({ status: `Transcribing chunk ${chunkIndex + 1}...`, text: fullTranscript })
-                    const chunkText = await transcribeChunk(chunkBuffer, chunkIndex)
+                        if (!chunkRes.ok) throw new Error(`Failed to download chunk ${idx}`)
+                        const chunkBuffer = await chunkRes.arrayBuffer()
 
-                    // Append text (add newline if needed)
-                    fullTranscript += (fullTranscript ? "\n\n" : "") + chunkText
-                    sendEvent({ status: "Streaming...", text: fullTranscript })
+                        // Transcribe chunk
+                        const chunkText = await transcribeChunk(chunkBuffer, idx)
 
-                    offset += CONFIG.TRANSCRIBE.CHUNK_SIZE_BYTES
-                    chunkIndex++
+                        // Update progress with atomic counter
+                        completedCount++
+                        sendEvent({ status: `已完成 ${completedCount}/${totalChunks} 个音频块`, text: "" })
+
+                        return { index: idx, text: chunkText }
+                    })(chunkIndex)
+
+                    chunkPromises.push(promise)
+
+                    // Rate limiting: batch processing every 40 chunks to avoid overwhelming API
+                    // With 1200 RPM limit, 40 concurrent requests is safe
+                    if ((chunkIndex + 1) % 40 === 0 || chunkIndex === totalChunks - 1) {
+                        await Promise.all(chunkPromises.slice(Math.max(0, chunkIndex - 39), chunkIndex + 1))
+                    }
                 }
+
+                // Wait for all chunks
+                sendEvent({ status: "等待所有转译任务完成...", text: "" })
+                const results = await Promise.all(chunkPromises)
+
+                // Sort by index to maintain order
+                results.sort((a, b) => a.index - b.index)
+
+                // Combine text
+                let fullTranscript = results.map(r => r.text).join("\n\n")
 
                 // 3. Save to cache
                 if (episodeGuid && fullTranscript) {
@@ -129,6 +161,7 @@ export async function POST(request: Request) {
                     }
                 }
 
+                // Send final result with transcript
                 sendEvent({ status: "Completed", text: fullTranscript })
 
             } catch (error: any) {

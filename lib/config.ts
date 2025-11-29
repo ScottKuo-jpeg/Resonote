@@ -9,7 +9,6 @@ export const CONFIG = {
         },
         LIMITS: {
             MAX_TOKENS: 30000,
-            CHUNK_SIZE: 12000,
             MAX_TRANSCRIPT_LENGTH: 50000,
         }
     },

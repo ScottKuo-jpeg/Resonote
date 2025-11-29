@@ -10,6 +10,7 @@ interface AIPanelProps {
     transcript: string
     episodeGuid?: string
     disabled?: boolean
+    isTranscribing?: boolean
 }
 
 type Tab = "summary" | "mindmap" | "chat"
@@ -19,7 +20,7 @@ interface Message {
     content: string
 }
 
-export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
+export function AIPanel({ transcript, episodeGuid, isTranscribing = false }: AIPanelProps) {
     const [activeTab, setActiveTab] = useState<Tab>("summary")
     const [summary, setSummary] = useState("")
     const [mindmap, setMindmap] = useState("")
@@ -141,23 +142,50 @@ export function AIPanel({ transcript, episodeGuid }: AIPanelProps) {
     }, [episodeGuid])
 
     useEffect(() => {
+        // Only load if transcription is complete
+        if (isTranscribing) {
+            return
+        }
+
         if (activeTab === "summary" && !summary && transcript) {
             loadSummary()
         } else if (activeTab === "mindmap" && !mindmap && transcript) {
             loadMindmap()
         }
-    }, [activeTab, summary, mindmap, transcript])
+    }, [activeTab, summary, mindmap, transcript, isTranscribing])
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages])
 
+    // Show loading state while transcription is in progress
+    const showLoading = isTranscribing || (!transcript && isTranscribing !== false)
+
     if (!transcript) {
         return (
             <div className="h-full flex flex-col items-center justify-center text-gray-500 p-8 text-center">
-                <Sparkles className="w-12 h-12 mb-4 text-gray-600" />
-                <p className="text-lg font-medium mb-2">AI Features Unavailable</p>
-                <p className="text-sm">Transcribe an episode to generate summaries, mindmaps, and chat with the content.</p>
+                {showLoading ? (
+                    <div className="space-y-4 max-w-md">
+                        <div className="w-16 h-16 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                        <div className="space-y-2">
+                            <p className="text-lg font-medium text-violet-400">正在转译音频...</p>
+                            <p className="text-sm text-gray-400">
+                                所有音频块转译完成后将自动生成摘要和思维导图
+                            </p>
+                            <div className="mt-4 p-3 bg-white/5 rounded-lg border border-white/10">
+                                <p className="text-xs text-gray-500">
+                                    💡 提示：转译过程中AI面板将保持等待状态
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        <Sparkles className="w-12 h-12 mb-4 text-gray-600" />
+                        <p className="text-lg font-medium mb-2">AI Features Unavailable</p>
+                        <p className="text-sm">Transcribe an episode to generate summaries, mindmaps, and chat with the content.</p>
+                    </>
+                )}
             </div>
         )
     }

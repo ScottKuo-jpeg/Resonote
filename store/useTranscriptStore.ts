@@ -37,6 +37,8 @@ export const useTranscriptStore = create<TranscriptionState>((set) => ({
                 (status) => set({ status }),
                 (text) => set({ text })
             )
+            // Set completed status
+            set({ status: "Completed" })
         } catch (error) {
             console.error("Transcription failed:", error)
             set({ status: "Failed - Click to Retry" })
