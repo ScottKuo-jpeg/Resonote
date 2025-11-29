@@ -3,7 +3,10 @@
 import { useEffect, useRef } from "react"
 import { useUIStore } from "@/store/useUIStore"
 import { usePlayerStore } from "@/store/usePlayerStore"
+import { Sidebar } from "@/components/layout/Sidebar"
 import { Discovery } from "@/components/features/Discovery/Discovery"
+import { Library } from "@/components/features/Library/Library"
+import { Notes } from "@/components/features/Notes/Notes"
 import { Workspace } from "@/components/features/Workspace/Workspace"
 import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer"
 
@@ -26,15 +29,21 @@ export default function Home() {
   }, [])
 
   return (
-    <main className="min-h-screen bg-background text-foreground overflow-hidden relative">
-      {activeView === 'search' ? (
-        <Discovery />
-      ) : (
-        <Workspace />
-      )}
+    <main className="min-h-screen bg-background text-foreground overflow-hidden relative flex">
+      {/* Sidebar Navigation */}
+      <Sidebar />
+
+      {/* Main Content Area with left padding for sidebar */}
+      <div className="flex-1 ml-20">
+        {activeView === 'discover' && <Discovery />}
+        {activeView === 'library' && <Library />}
+        {activeView === 'notes' && <Notes />}
+        {activeView === 'workspace' && <Workspace />}
+      </div>
 
       {/* Global Audio Player */}
       <AudioPlayer ref={audioPlayerRef} episode={currentEpisode} />
     </main>
   )
 }
+

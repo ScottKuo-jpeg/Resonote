@@ -1,10 +1,14 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Sparkles, MessageSquare, Network, Send, Loader2 } from "lucide-react"
+import { Sparkles, MessageSquare, Network, Send, Loader2, BookmarkPlus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PremiumButton } from "@/components/ui/PremiumButton"
 import { GlassContainer } from "@/components/ui/GlassContainer"
+import { useNotesStore } from "@/store/useNotesStore"
+import { useUIStore } from "@/store/useUIStore"
+import { useContentStore } from "@/store/useContentStore"
+import { NoteType } from "@/types"
 
 interface AIPanelProps {
     transcript: string
@@ -27,7 +31,83 @@ export function AIPanel({ transcript, episodeGuid, isTranscribing = false }: AIP
     const [messages, setMessages] = useState<Message[]>([])
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
+    const [isSavingNote, setIsSavingNote] = useState(false)
     const chatEndRef = useRef<HTMLDivElement>(null)
+
+    // Stores
+    const { createNote } = useNotesStore()
+    const setActiveView = useUIStore((state) => state.setActiveView)
+    const { selectedPodcast, episodes, selectedEpisodeGuid } = useContentStore()
+
+    // Get current episode data
+    const currentEpisode = episodes.find(e => e.guid === selectedEpisodeGuid)
+
+    const handleSaveAsNote = async () => {
+        if (!episodeGuid || !selectedPodcast || !currentEpisode) {
+            alert('請先選擇一個播客和 Episode')
+            return
+        }
+
+        let noteType: NoteType
+        let content: string
+        let title: string
+        let keyTakeaway: string | undefined
+
+        if (activeTab === "summary") {
+            if (!summary) {
+                alert('請先生成摘要')
+                return
+            }
+            noteType = 'SUMMARY'
+            content = summary
+            title = `${currentEpisode.title} - Summary`
+            // Extract first meaningful sentence as takeaway
+            const sentences = summary.split(/[.!?]/).filter(s => s.trim().length > 20)
+            keyTakeaway = sentences[0]?.trim()
+        } else if (activeTab === "mindmap") {
+            if (!mindmap) {
+                alert('請先生成思維導圖')
+                return
+            }
+            noteType = 'MINDMAP'
+            content = mindmap
+            title = `${currentEpisode.title} - Mindmap`
+        } else {
+            // Chat tab
+            if (messages.length === 0) {
+                alert('請先進行對話')
+                return
+            }
+            noteType = 'CHAT'
+            // Combine last Q&A as content
+            const lastMessages = messages.slice(-2)
+            content = lastMessages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n')
+            title = `${currentEpisode.title} - Chat`
+            keyTakeaway = lastMessages.find(m => m.role === 'assistant')?.content.split(/[.!?]/)[0]
+        }
+
+        setIsSavingNote(true)
+        try {
+            const note = await createNote({
+                episode_guid: episodeGuid,
+                note_type: noteType,
+                title,
+                key_takeaway: keyTakeaway,
+                content,
+                cover_url: selectedPodcast.artworkUrl600,
+                tags: [selectedPodcast.primaryGenreName || 'podcast']
+            })
+
+            if (note) {
+                alert('筆記已保存! 點擊側邊欄的 Notes 查看')
+            }
+        } catch (error) {
+            alert('保存筆記失敗，請重試')
+            console.error('Save note error:', error)
+        } finally {
+            setIsSavingNote(false)
+        }
+    }
 
     const loadSummary = async () => {
         if (summary || !transcript) return
@@ -244,35 +324,81 @@ export function AIPanel({ transcript, episodeGuid, isTranscribing = false }: AIP
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                 {activeTab === "summary" && (
-                    <div className="prose prose-invert max-w-none">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 text-gray-400 animate-pulse">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Generating summary...
+                    <div className="space-y-4">
+                        {/* Save as Note Button */}
+                        {summary && !isLoading && (
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveAsNote}
+                                    disabled={isSavingNote}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/50 transition-all disabled:opacity-50 text-sm font-medium"
+                                >
+                                    <BookmarkPlus className="w-4 h-4" />
+                                    {isSavingNote ? '保存中...' : '保存為筆記'}
+                                </button>
                             </div>
-                        ) : (
-                            <div className="whitespace-pre-wrap text-gray-300 leading-relaxed">{summary}</div>
                         )}
+
+                        <div className="prose prose-invert max-w-none">
+                            {isLoading ? (
+                                <div className="flex items-center gap-2 text-gray-400 animate-pulse">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Generating summary...
+                                </div>
+                            ) : (
+                                <div className="whitespace-pre-wrap text-gray-300 leading-relaxed">{summary}</div>
+                            )}
+                        </div>
                     </div>
                 )}
 
                 {activeTab === "mindmap" && (
-                    <div className="prose prose-invert max-w-none">
-                        {isLoading ? (
-                            <div className="flex items-center gap-2 text-gray-400 animate-pulse">
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                Generating mindmap...
-                            </div>
-                        ) : (
-                            <div className="whitespace-pre-wrap text-gray-300 font-mono text-sm bg-black/20 p-4 rounded-xl border border-white/5">
-                                {mindmap}
+                    <div className="space-y-4">
+                        {/* Save as Note Button */}
+                        {mindmap && !isLoading && (
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveAsNote}
+                                    disabled={isSavingNote}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/50 transition-all disabled:opacity-50 text-sm font-medium"
+                                >
+                                    <BookmarkPlus className="w-4 h-4" />
+                                    {isSavingNote ? '保存中...' : '保存為筆記'}
+                                </button>
                             </div>
                         )}
+
+                        <div className="prose prose-invert max-w-none">
+                            {isLoading ? (
+                                <div className="flex items-center gap-2 text-gray-400 animate-pulse">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    Generating mindmap...
+                                </div>
+                            ) : (
+                                <div className="whitespace-pre-wrap text-gray-300 font-mono text-sm bg-black/20 p-4 rounded-xl border border-white/5">
+                                    {mindmap}
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
 
                 {activeTab === "chat" && (
                     <div className="space-y-4">
+                        {/* Save as Note Button */}
+                        {messages.length > 0 && (
+                            <div className="flex justify-end">
+                                <button
+                                    onClick={handleSaveAsNote}
+                                    disabled={isSavingNote}
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white rounded-lg hover:shadow-lg hover:shadow-violet-500/50 transition-all disabled:opacity-50 text-sm font-medium"
+                                >
+                                    <BookmarkPlus className="w-4 h-4" />
+                                    {isSavingNote ? '保存中...' : '保存對話為筆記'}
+                                </button>
+                            </div>
+                        )}
+
                         {messages.map((msg, idx) => (
                             <GlassContainer
                                 key={idx}

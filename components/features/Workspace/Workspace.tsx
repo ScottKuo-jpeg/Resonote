@@ -38,7 +38,7 @@ export function Workspace() {
 
     const handleBack = () => {
         backToSearch()
-        setActiveView('search')
+        setActiveView('discover')
     }
 
     if (!selectedPodcast) return null

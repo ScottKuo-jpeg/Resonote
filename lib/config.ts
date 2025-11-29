@@ -8,9 +8,10 @@ export const CONFIG = {
             TRANSCRIBE: 'TeleAI/TeleSpeechASR',
         },
         LIMITS: {
-            MAX_TOKENS: 30000,
-            MAX_TRANSCRIPT_LENGTH: 50000,
-        }
+            MAX_TOKENS: 100000,
+            MAX_TRANSCRIPT_LENGTH: 500000,
+            CHUNK_SIZE: 8000
+        },
     },
     TRANSCRIBE: {
         CHUNK_SIZE_MB: 5,

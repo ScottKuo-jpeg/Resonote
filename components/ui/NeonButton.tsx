@@ -1,44 +1,38 @@
+import { ReactNode, ButtonHTMLAttributes } from "react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
-import { Loader2 } from "lucide-react"
 
-interface NeonButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-    variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
-    isLoading?: boolean
-    icon?: React.ReactNode
+interface NeonButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+    children: ReactNode
+    variant?: "primary" | "secondary"
 }
 
 export function NeonButton({
     children,
     className,
-    variant = 'primary',
-    isLoading,
-    icon,
-    disabled,
+    variant = "primary",
     ...props
 }: NeonButtonProps) {
-    const variants = {
-        primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_20px_rgba(37,99,235,0.5)] hover:shadow-[0_0_30px_rgba(37,99,235,0.6)] border-transparent",
-        secondary: "bg-white/10 hover:bg-white/20 text-white border-white/10 hover:border-white/20 backdrop-blur-md",
-        danger: "bg-red-500/10 hover:bg-red-500/20 text-red-400 border-red-500/20 hover:border-red-500/40",
-        ghost: "bg-transparent hover:bg-white/5 text-gray-400 hover:text-white border-transparent"
+    const baseStyles = "relative px-6 py-3 font-semibold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+
+    const variantStyles = {
+        primary: "bg-gradient-to-r from-violet-600 to-indigo-600 text-white shadow-lg shadow-violet-500/50 hover:shadow-violet-500/70 hover:scale-105",
+        secondary: "border-2 border-violet-500 text-violet-400 hover:bg-violet-500/10 hover:shadow-lg hover:shadow-violet-500/30"
     }
 
     return (
-        <motion.button
-            whileTap={{ scale: 0.98 }}
+        <button
             className={cn(
-                "relative flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 border",
-                variants[variant],
-                disabled && "opacity-50 cursor-not-allowed pointer-events-none",
+                baseStyles,
+                variantStyles[variant],
                 className
             )}
-            disabled={disabled || isLoading}
             {...props}
         >
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {!isLoading && icon}
-            {children}
-        </motion.button>
+            {/* Glow Effect */}
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity" />
+
+            {/* Content */}
+            <span className="relative z-10">{children}</span>
+        </button>
     )
 }

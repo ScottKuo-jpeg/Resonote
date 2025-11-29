@@ -1,15 +1,18 @@
 import { create } from 'zustand'
 
+type ActiveView = 'discover' | 'library' | 'notes' | 'workspace'
+
 interface UIState {
     isSidebarCollapsed: boolean
-    activeView: 'search' | 'workspace'
+    activeView: ActiveView
     toggleSidebar: () => void
-    setActiveView: (view: 'search' | 'workspace') => void
+    setActiveView: (view: ActiveView) => void
 }
 
 export const useUIStore = create<UIState>((set) => ({
     isSidebarCollapsed: false,
-    activeView: 'search',
+    activeView: 'discover',
     toggleSidebar: () => set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
     setActiveView: (view) => set({ activeView: view }),
 }))
+

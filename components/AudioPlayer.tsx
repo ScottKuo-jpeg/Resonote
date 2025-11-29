@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useEffect, forwardRef, useImperativeHandle } from "react"
-import { Episode } from "./EpisodeList"
+import { Episode } from "@/types"
 import { GlassContainer } from "@/components/ui/GlassContainer"
 
 interface AudioPlayerProps {
