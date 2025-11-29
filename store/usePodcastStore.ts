@@ -22,6 +22,10 @@ interface ContentState {
     isSearching: boolean
     isLoadingEpisodes: boolean
 
+    // Error States
+    searchError: string | null
+    episodesError: string | null
+
     // Actions
     searchPodcasts: (term: string) => Promise<void>
     selectPodcast: (podcast: Podcast) => Promise<void>
@@ -65,27 +69,32 @@ export const usePodcastStore = create<PodcastStore>((set, get) => ({
     selectedEpisodeGuid: null,
     isSearching: false,
     isLoadingEpisodes: false,
+    searchError: null,
+    episodesError: null,
 
     searchPodcasts: async (term: string) => {
-        set({ isSearching: true, selectedPodcast: null, episodes: [] })
+        set({ isSearching: true, selectedPodcast: null, episodes: [], searchError: null })
         try {
             const results = await api.searchPodcasts(term)
-            set({ podcasts: results })
+            set({ podcasts: results, searchError: null })
         } catch (error) {
             console.error("Search failed:", error)
-            // Ideally set an error state here
+            const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+            set({ searchError: errorMsg, podcasts: [] })
         } finally {
             set({ isSearching: false })
         }
     },
 
     selectPodcast: async (podcast: Podcast) => {
-        set({ selectedPodcast: podcast, isLoadingEpisodes: true, activeView: 'workspace' })
+        set({ selectedPodcast: podcast, isLoadingEpisodes: true, activeView: 'workspace', episodesError: null })
         try {
             const episodes = await api.getEpisodes(podcast.feedUrl)
-            set({ episodes })
+            set({ episodes, episodesError: null })
         } catch (error) {
             console.error("Fetch episodes failed:", error)
+            const errorMsg = error instanceof Error ? error.message : 'Failed to load episodes'
+            set({ episodesError: errorMsg, episodes: [] })
         } finally {
             set({ isLoadingEpisodes: false })
         }

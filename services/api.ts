@@ -39,7 +39,12 @@ export const api = {
     getEpisodes: async (feedUrl: string): Promise<Episode[]> => {
         try {
             const res = await fetch(`/api/rss?url=${encodeURIComponent(feedUrl)}`)
-            if (!res.ok) throw new Error(`Failed to fetch episodes: ${res.statusText}`)
+            if (!res.ok) {
+                // Try to get detailed error from response body
+                const errorData = await res.json().catch(() => ({ error: res.statusText }))
+                const errorMsg = errorData.details || errorData.error || res.statusText
+                throw new Error(`Failed to fetch episodes: ${errorMsg}`)
+            }
             const data: RSSResponse = await res.json()
             return data.items || []
         } catch (error) {

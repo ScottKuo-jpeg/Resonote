@@ -16,9 +16,12 @@ export function Workspace() {
         text,
         status,
         isTranscribing,
+        isLoadingEpisodes,
+        episodesError,
         backToSearch,
         setCurrentEpisode,
         transcribeEpisode,
+        selectPodcast,
         selectedEpisodeGuid: currentSelectedGuid // Alias to avoid conflict if needed, but store has it
     } = store
 
@@ -55,16 +58,42 @@ export function Workspace() {
                         <h3 className="font-semibold text-gray-400 text-sm uppercase tracking-wider">Episodes</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-                        <EpisodeList
-                            episodes={episodes}
-                            onEpisodeSelect={(ep) => {
-                                store.setSelectedEpisodeGuid(ep.guid)
-                            }}
-                            onTranscribe={transcribeEpisode}
-                            onPlay={setCurrentEpisode}
-                            currentEpisodeGuid={currentEpisode?.guid}
-                            selectedEpisodeGuid={selectedEpisodeGuid || undefined}
-                        />
+                        {isLoadingEpisodes ? (
+                            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                                <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin" />
+                                <p className="text-sm text-gray-400">Loading episodes...</p>
+                            </div>
+                        ) : episodesError ? (
+                            <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center px-4">
+                                <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-2">
+                                    <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div className="space-y-2">
+                                    <h4 className="font-semibold text-white">Failed to Load Episodes</h4>
+                                    <p className="text-sm text-red-400 break-words">{episodesError}</p>
+                                </div>
+                                <PremiumButton
+                                    variant="primary"
+                                    onClick={() => selectedPodcast && selectPodcast(selectedPodcast)}
+                                    className="mt-4"
+                                >
+                                    Retry
+                                </PremiumButton>
+                            </div>
+                        ) : (
+                            <EpisodeList
+                                episodes={episodes}
+                                onEpisodeSelect={(ep) => {
+                                    store.setSelectedEpisodeGuid(ep.guid)
+                                }}
+                                onTranscribe={transcribeEpisode}
+                                onPlay={setCurrentEpisode}
+                                currentEpisodeGuid={currentEpisode?.guid}
+                                selectedEpisodeGuid={selectedEpisodeGuid || undefined}
+                            />
+                        )}
                     </div>
                 </GlassContainer>
 
