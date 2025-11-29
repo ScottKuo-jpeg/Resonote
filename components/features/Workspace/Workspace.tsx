@@ -77,9 +77,9 @@ export function Workspace() {
                                 if (window.seekAudio) window.seekAudio(time)
                             }}
                             title={selectedEpisode?.title}
-                            description={selectedEpisode?.description}
+                            description={selectedEpisode?.content_snippet}
                             podcastName={selectedPodcast.collectionName}
-                            pubDate={selectedEpisode?.pubDate}
+                            pubDate={selectedEpisode?.pub_date}
                         />
                     ) : (
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500 p-8 text-center">

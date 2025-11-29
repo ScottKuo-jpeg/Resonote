@@ -102,7 +102,7 @@ export const AudioPlayer = forwardRef<AudioPlayerHandle, AudioPlayerProps>(
                                 {episode.title}
                             </h4>
                             <p className="text-xs text-gray-400 truncate">
-                                Now Playing • {episode.itunesDuration || "Podcast"}
+                                Now Playing
                             </p>
                         </div>
 

@@ -53,6 +53,14 @@ export const useContentStore = create<ContentState>((set) => ({
         set({ selectedPodcast: podcast, isLoadingEpisodes: true, episodesError: null })
         try {
             const episodes = await api.getEpisodes(podcast.feedUrl)
+            console.log('📡 Episodes fetched:', episodes.length)
+            if (episodes.length > 0) {
+                console.log('📝 First episode sample:', {
+                    title: episodes[0].title,
+                    pub_date: episodes[0].pub_date,
+                    content_snippet: episodes[0].content_snippet?.substring(0, 100)
+                })
+            }
             set({ episodes, episodesError: null })
         } catch (error) {
             console.error("Fetch episodes failed:", error)

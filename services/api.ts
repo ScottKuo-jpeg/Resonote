@@ -25,6 +25,14 @@ export const api = {
                 throw new Error(`Failed to fetch episodes: ${errorMsg}`)
             }
             const data: RSSResponse = await res.json()
+            console.log('🔍 RSS API Response:', {
+                itemCount: data.items?.length || 0,
+                firstItem: data.items?.[0] ? {
+                    title: data.items[0].title,
+                    pub_date: data.items[0].pub_date,
+                    content_snippet: data.items[0].content_snippet?.substring(0, 50)
+                } : null
+            })
             return data.items || []
         } catch (error) {
             console.error("API Error [getEpisodes]:", error)

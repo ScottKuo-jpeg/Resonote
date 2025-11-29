@@ -49,16 +49,27 @@ export class PodcastService {
         const items = feed.items?.map((item: any) => ({
             title: item.title || "",
             guid: item.guid || item.link || "",
-            pubDate: item.pubDate || "",
+            pub_date: item.pubDate || item.isoDate || "",
             link: item.link || "",
-            content: item.content || item.contentSnippet || "",
+            content_snippet: item.contentSnippet || item.content || "",
+            content: item.content || "",
             podcast_id: "", // Will be filled by context if needed
             enclosure: item.enclosure ? {
                 url: item.enclosure.url,
                 type: item.enclosure.type,
                 length: item.enclosure.length
-            } : undefined
+            } : undefined,
+            enclosure_url: item.enclosure?.url || ""
         })) || []
+
+        logger.info(`Parsed ${items.length} episodes from RSS feed`)
+        if (items.length > 0) {
+            logger.info('First episode:', {
+                title: items[0].title,
+                pub_date: items[0].pub_date,
+                has_content: !!items[0].content_snippet
+            })
+        }
 
         return {
             items,

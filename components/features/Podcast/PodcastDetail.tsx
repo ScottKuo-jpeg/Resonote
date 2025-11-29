@@ -81,12 +81,10 @@ export function PodcastDetail() {
                                                 {episode.title}
                                             </h3>
                                             <p className="text-gray-500 text-sm line-clamp-2 mb-4">
-                                                {episode.description?.replace(/<[^>]*>/g, '') || "No description available."}
+                                                {episode.content_snippet?.replace(/<[^>]*>/g, '') || "No description available."}
                                             </p>
                                             <div className="flex items-center gap-4 text-xs text-gray-600 font-mono">
-                                                <span>{new Date(episode.pubDate).toLocaleDateString()}</span>
-                                                <span>•</span>
-                                                <span>{episode.itunesDuration || "00:00"}</span>
+                                                <span>{episode.pub_date ? new Date(episode.pub_date).toLocaleDateString() : 'Unknown date'}</span>
                                             </div>
                                         </div>
 
