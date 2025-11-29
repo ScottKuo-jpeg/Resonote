@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
+import { CONFIG } from './config'
 
 let supabaseInstance: SupabaseClient | null = null
 
@@ -24,37 +25,4 @@ export const supabase = new Proxy({} as SupabaseClient, {
     }
 })
 
-// Database Types
-export interface Episode {
-    guid: string
-    podcast_id: string
-    title: string
-    enclosure_url?: string
-    pub_date?: string
-    content_snippet?: string
-    created_at?: string
-}
-
-export interface Transcript {
-    episode_guid: string
-    text: string
-    created_at?: string
-    updated_at?: string
-}
-
-export interface AIAnalysis {
-    id?: string
-    episode_guid: string
-    analysis_type: 'summary' | 'mindmap'
-    content: string
-    model_used?: string
-    created_at?: string
-}
-
-export interface ChatMessage {
-    id?: string
-    episode_guid: string
-    role: 'user' | 'assistant' | 'system'
-    content: string
-    created_at?: string
-}
+export type { Episode, Transcript, AIAnalysis, ChatMessage } from '@/types'

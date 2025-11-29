@@ -1,27 +1,6 @@
-import { Podcast } from "@/components/PodcastList"
-import { Episode } from "@/components/EpisodeList"
+import { Podcast, Episode, SearchResponse, RSSResponse, TranscribeResponse } from "@/types"
 
-export interface SearchResponse {
-    resultCount: number
-    results: Podcast[]
-}
-
-export interface RSSResponse {
-    items: Episode[]
-    feed: {
-        title: string
-        description: string
-        link: string
-        image: string
-    }
-}
-
-export interface TranscribeResponse {
-    status?: string
-    text?: string
-    savedPath?: string
-    error?: string
-}
+export { type SearchResponse, type RSSResponse, type TranscribeResponse }
 
 export const api = {
     searchPodcasts: async (term: string): Promise<Podcast[]> => {

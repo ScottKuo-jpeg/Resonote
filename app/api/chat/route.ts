@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server"
-import { getCachedChatHistory, saveCachedChatHistory } from "@/lib/cache"
+import { getCachedChat, saveCachedChat } from "@/lib/cache"
 import { PROMPTS } from "@/lib/prompts"
+import { CONFIG } from "@/lib/config"
+import { logger } from "@/lib/logger"
 
 export async function POST(request: Request) {
     const { messages, transcript, episodeGuid } = await request.json()
@@ -28,8 +30,7 @@ export async function POST(request: Request) {
                 }
 
                 // Build system prompt with transcript context
-                // Truncate transcript if too long (DeepSeek has 32k context, approx 100k chars, but let's be safe with 50k)
-                const maxTranscriptLength = 50000
+                const maxTranscriptLength = CONFIG.AI.LIMITS.MAX_TRANSCRIPT_LENGTH
                 const safeTranscript = transcript.length > maxTranscriptLength
                     ? transcript.substring(0, maxTranscriptLength) + "\n...(truncated)..."
                     : transcript
@@ -43,22 +44,24 @@ export async function POST(request: Request) {
                 const newUserMessage = messages[messages.length - 1]
                 const apiMessages = [systemMessage, ...chatHistory, newUserMessage]
 
-                const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+                logger.info(`Starting chat stream for episode: ${episodeGuid || 'unknown'}`)
+
+                const response = await fetch(`${CONFIG.AI.BASE_URL}/chat/completions`, {
                     method: "POST",
                     headers: {
-                        "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY} `,
+                        "Authorization": `Bearer ${CONFIG.AI.API_KEY}`,
                         "Content-Type": "application/json",
                     },
                     body: JSON.stringify({
-                        model: "deepseek-ai/DeepSeek-V3.2-Exp",
+                        model: CONFIG.AI.MODELS.CHAT,
                         messages: apiMessages,
                         stream: true,
-                        max_tokens: 30000,
+                        max_tokens: CONFIG.AI.LIMITS.MAX_TOKENS,
                     }),
                 })
 
                 if (!response.ok) {
-                    throw new Error(`API Error: ${response.status} `)
+                    throw new Error(`API Error: ${response.status}`)
                 }
 
                 if (!response.body) {
@@ -110,10 +113,11 @@ export async function POST(request: Request) {
                     try {
                         await saveCachedChat(episodeGuid, updatedHistory)
                     } catch (cacheError) {
-                        console.error("Failed to cache chat:", cacheError)
+                        logger.error("Failed to cache chat:", cacheError)
                     }
                 }
             } catch (error: any) {
+                logger.error("Chat error:", error)
                 sendEvent({ error: error.message })
             } finally {
                 controller.close()

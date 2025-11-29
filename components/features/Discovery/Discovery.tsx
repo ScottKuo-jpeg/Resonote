@@ -1,18 +1,26 @@
 import { useState } from "react"
-import { usePodcastStore } from "@/store/usePodcastStore"
+import { useContentStore } from "@/store/useContentStore"
+import { useUIStore } from "@/store/useUIStore"
 import { PremiumButton } from "@/components/ui/PremiumButton"
 import { GlassContainer } from "@/components/ui/GlassContainer"
 import { Search } from "lucide-react"
+import { Podcast } from "@/types"
 
 export function Discovery() {
-    const store = usePodcastStore()
-    const { podcasts, searchPodcasts, selectPodcast, isSearching } = store
+    const { podcasts, searchPodcasts, selectPodcast, isSearching } = useContentStore()
+    const setActiveView = useUIStore((state) => state.setActiveView)
     const [term, setTerm] = useState("")
 
     const handleSearch = async (e: React.FormEvent) => {
         e.preventDefault()
         if (!term.trim()) return
         await searchPodcasts(term)
+    }
+
+    const handlePodcastClick = (podcast: Podcast) => {
+        console.log("Discovery: Podcast clicked", podcast.collectionName)
+        selectPodcast(podcast)
+        setActiveView('workspace')
     }
 
     return (
@@ -53,8 +61,8 @@ export function Discovery() {
                     <GlassContainer
                         key={podcast.collectionId}
                         intensity="low"
-                        className="cursor-pointer p-4 flex items-center gap-4 group hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]"
-                        onClick={() => selectPodcast(podcast)}
+                        className="relative z-10 cursor-pointer p-4 flex items-center gap-4 group hover:bg-white/5 transition-all duration-300 hover:scale-[1.02]"
+                        onClick={() => handlePodcastClick(podcast)}
                     >
                         <img
                             src={podcast.artworkUrl600}

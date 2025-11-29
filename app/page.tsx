@@ -1,13 +1,16 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { usePodcastStore } from "@/store/usePodcastStore"
+import { useUIStore } from "@/store/useUIStore"
+import { usePlayerStore } from "@/store/usePlayerStore"
 import { Discovery } from "@/components/features/Discovery/Discovery"
 import { Workspace } from "@/components/features/Workspace/Workspace"
 import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer"
 
 export default function Home() {
-  const { activeView, currentEpisode } = usePodcastStore()
+  const activeView = useUIStore((state) => state.activeView)
+  console.log("Home: activeView changed to", activeView)
+  const currentEpisode = usePlayerStore((state) => state.currentEpisode)
   const audioPlayerRef = useRef<AudioPlayerHandle>(null)
 
   // Expose seek function to window for transcript clicks

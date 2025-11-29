@@ -1,13 +1,5 @@
 import { cn } from "@/lib/utils"
-
-export interface Podcast {
-    collectionId: number
-    collectionName: string
-    artistName: string
-    artworkUrl600: string
-    feedUrl: string
-    primaryGenreName?: string
-}
+import { Podcast } from "@/types"
 
 interface PodcastListProps {
     podcasts: Podcast[]

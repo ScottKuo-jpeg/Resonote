@@ -1,7 +1,8 @@
-import { supabase } from "./supabase"
+import { CONFIG } from "./config"
+import { logger } from "./logger"
 
 // Split text into chunks that fit within context window
-export function splitText(text: string, maxChunkSize: number = 15000): string[] {
+export function splitText(text: string, maxChunkSize: number = CONFIG.AI.LIMITS.CHUNK_SIZE): string[] {
     const chunks: string[] = []
     let currentChunk = ""
 
@@ -22,17 +23,18 @@ export function splitText(text: string, maxChunkSize: number = 15000): string[] 
 }
 
 // Helper to call LLM
-async function callLLM(messages: any[], model: string = "deepseek-ai/DeepSeek-V3.2-Exp") {
-    const response = await fetch("https://api.siliconflow.cn/v1/chat/completions", {
+async function callLLM(messages: any[], model: string = CONFIG.AI.MODELS.CHAT) {
+    logger.info(`Calling LLM with model: ${model}`)
+    const response = await fetch(`${CONFIG.AI.BASE_URL}/chat/completions`, {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY}`,
+            "Authorization": `Bearer ${CONFIG.AI.API_KEY}`,
             "Content-Type": "application/json",
         },
         body: JSON.stringify({
             model,
             messages,
-            max_tokens: 20000,
+            max_tokens: CONFIG.AI.LIMITS.MAX_TOKENS,
         }),
     })
 
@@ -46,7 +48,7 @@ async function callLLM(messages: any[], model: string = "deepseek-ai/DeepSeek-V3
 
 // Map-Reduce Summarization
 export async function generateSegmentedSummary(transcript: string): Promise<string> {
-    const chunks = splitText(transcript, 12000) // Conservative limit for 32k context
+    const chunks = splitText(transcript, CONFIG.AI.LIMITS.CHUNK_SIZE)
 
     if (chunks.length === 1) {
         return await callLLM([

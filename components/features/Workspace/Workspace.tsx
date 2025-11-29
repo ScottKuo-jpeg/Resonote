@@ -1,4 +1,7 @@
-import { usePodcastStore } from "@/store/usePodcastStore"
+import { useContentStore } from "@/store/useContentStore"
+import { usePlayerStore } from "@/store/usePlayerStore"
+import { useTranscriptStore } from "@/store/useTranscriptStore"
+import { useUIStore } from "@/store/useUIStore"
 import { PremiumButton } from "@/components/ui/PremiumButton"
 import { GlassContainer } from "@/components/ui/GlassContainer"
 import { EpisodeList } from "@/components/EpisodeList"
@@ -7,23 +10,36 @@ import { AIPanel } from "@/components/AIPanel"
 import { ArrowLeft, FileText } from "lucide-react"
 
 export function Workspace() {
-    const store = usePodcastStore()
+    console.log("Workspace: Rendered")
     const {
         selectedPodcast,
         episodes,
-        currentEpisode,
         selectedEpisodeGuid,
-        text,
-        status,
-        isTranscribing,
         isLoadingEpisodes,
         episodesError,
         backToSearch,
-        setCurrentEpisode,
-        transcribeEpisode,
         selectPodcast,
-        selectedEpisodeGuid: currentSelectedGuid // Alias to avoid conflict if needed, but store has it
-    } = store
+        setSelectedEpisodeGuid
+    } = useContentStore()
+
+    const {
+        currentEpisode,
+        setCurrentEpisode
+    } = usePlayerStore()
+
+    const {
+        text,
+        status,
+        isTranscribing,
+        transcribeEpisode
+    } = useTranscriptStore()
+
+    const setActiveView = useUIStore((state) => state.setActiveView)
+
+    const handleBack = () => {
+        backToSearch()
+        setActiveView('search')
+    }
 
     if (!selectedPodcast) return null
 
@@ -33,7 +49,7 @@ export function Workspace() {
             <div className="h-20 flex items-center px-6 border-b border-white/5 bg-white/5 backdrop-blur-md z-10 shrink-0">
                 <PremiumButton
                     variant="ghost"
-                    onClick={backToSearch}
+                    onClick={handleBack}
                     className="mr-6"
                 >
                     <ArrowLeft className="w-4 h-4 mr-2" />
@@ -86,7 +102,7 @@ export function Workspace() {
                             <EpisodeList
                                 episodes={episodes}
                                 onEpisodeSelect={(ep) => {
-                                    store.setSelectedEpisodeGuid(ep.guid)
+                                    setSelectedEpisodeGuid(ep.guid)
                                 }}
                                 onTranscribe={transcribeEpisode}
                                 onPlay={setCurrentEpisode}

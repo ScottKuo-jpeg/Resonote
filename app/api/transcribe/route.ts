@@ -2,9 +2,8 @@ import { NextResponse } from "next/server"
 import fs from "fs/promises"
 import path from "path"
 import { getCachedTranscript, saveCachedTranscript } from "@/lib/cache"
-
-// Chunk size: 5MB (approx 5-6 mins of 128kbps MP3)
-const CHUNK_SIZE = 5 * 1024 * 1024
+import { CONFIG } from "@/lib/config"
+import { logger } from "@/lib/logger"
 
 function sanitizeFilename(name: string) {
     return name.replace(/[^a-z0-9]/gi, '_').toLowerCase()
@@ -14,12 +13,12 @@ async function transcribeChunk(audioBuffer: ArrayBuffer, chunkIndex: number): Pr
     const formData = new FormData()
     const blob = new Blob([audioBuffer], { type: 'audio/mpeg' })
     formData.append("file", blob, `chunk_${chunkIndex}.mp3`)
-    formData.append("model", "TeleAI/TeleSpeechASR")
+    formData.append("model", CONFIG.AI.MODELS.TRANSCRIBE)
 
     const response = await fetch("https://api.siliconflow.cn/v1/audio/transcriptions", {
         method: "POST",
         headers: {
-            "Authorization": `Bearer ${process.env.SILICONFLOW_API_KEY}`,
+            "Authorization": `Bearer ${CONFIG.AI.API_KEY}`,
         },
         body: formData,
     })
@@ -54,13 +53,14 @@ export async function POST(request: Request) {
                     try {
                         const cachedTranscript = await getCachedTranscript(episodeGuid)
                         if (cachedTranscript) {
+                            logger.info(`Cache hit for transcript: ${episodeGuid}`)
                             sendEvent({ status: "Loaded from cache", text: cachedTranscript })
                             sendEvent({ status: "Completed", text: cachedTranscript })
                             controller.close()
                             return
                         }
                     } catch (e) {
-                        console.error("Cache read error:", e)
+                        logger.error("Cache read error:", e)
                     }
                 }
 
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
                 let chunkIndex = 0
 
                 while (offset < totalSize) {
-                    const end = Math.min(offset + CHUNK_SIZE - 1, totalSize - 1)
+                    const end = Math.min(offset + CONFIG.TRANSCRIBE.CHUNK_SIZE_BYTES - 1, totalSize - 1)
                     sendEvent({ status: `Downloading chunk ${chunkIndex + 1}...`, text: fullTranscript })
 
                     const chunkRes = await fetch(audioUrl, {
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
                     fullTranscript += (fullTranscript ? "\n\n" : "") + chunkText
                     sendEvent({ status: "Streaming...", text: fullTranscript })
 
-                    offset += CHUNK_SIZE
+                    offset += CONFIG.TRANSCRIBE.CHUNK_SIZE_BYTES
                     chunkIndex++
                 }
 
@@ -113,7 +113,7 @@ export async function POST(request: Request) {
                             enclosureUrl: audioUrl,
                         })
                     } catch (cacheError) {
-                        console.error("Failed to cache transcript:", cacheError)
+                        logger.error("Failed to cache transcript:", cacheError)
                     }
                 }
 
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
                 sendEvent({ status: "Completed", text: fullTranscript })
 
             } catch (error: any) {
-                console.error("Transcription error:", error)
+                logger.error("Transcription error:", error)
                 sendEvent({ status: "Error", text: `Error: ${error.message}` })
             } finally {
                 try { controller.close() } catch (e) { }

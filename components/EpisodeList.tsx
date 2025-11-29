@@ -1,17 +1,6 @@
 import { Play, Download, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
-
-export interface Episode {
-    guid: string
-    title: string
-    contentSnippet?: string
-    enclosure?: {
-        url: string
-        length?: string
-        type?: string
-    }
-    pubDate?: string
-}
+import { Episode } from "@/types"
 
 interface EpisodeListProps {
     episodes: Episode[]
@@ -49,10 +38,10 @@ export function EpisodeList({ episodes, onEpisodeSelect, onPlay, onTranscribe, c
                                     {episode.title}
                                 </h4>
                                 <p className="text-sm text-gray-400 line-clamp-2 mb-3">
-                                    {episode.contentSnippet}
+                                    {episode.content_snippet}
                                 </p>
                                 <div className="flex items-center gap-4 text-xs text-gray-500">
-                                    <span>{new Date(episode.pubDate || "").toLocaleDateString()}</span>
+                                    <span>{new Date(episode.pub_date || "").toLocaleDateString()}</span>
                                     {isPlaying && <span className="text-blue-400 flex items-center gap-1"><Play className="w-3 h-3" /> Playing</span>}
                                 </div>
                             </div>
