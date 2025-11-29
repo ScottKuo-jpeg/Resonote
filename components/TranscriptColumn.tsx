@@ -8,9 +8,13 @@ import { GlassContainer } from "@/components/ui/GlassContainer"
 interface TranscriptColumnProps {
     text: string
     onSeek?: (time: number) => void
+    title?: string
+    description?: string
+    podcastName?: string
+    pubDate?: string
 }
 
-export function TranscriptColumn({ text, onSeek }: TranscriptColumnProps) {
+export function TranscriptColumn({ text, onSeek, title, description, podcastName, pubDate }: TranscriptColumnProps) {
     const [paragraphs, setParagraphs] = useState<TimestampedParagraph[]>([])
 
     useEffect(() => {
@@ -29,8 +33,29 @@ export function TranscriptColumn({ text, onSeek }: TranscriptColumnProps) {
     }
 
     return (
-        <div className="h-full overflow-y-auto p-6 space-y-6 custom-scrollbar">
-            <h2 className="text-2xl font-bold text-white mb-6 pb-2 border-b border-white/5">
+        <div className="h-full overflow-y-auto p-8 space-y-8 custom-scrollbar">
+            {/* Episode Header */}
+            <div className="space-y-4 pb-6 border-b border-white/5">
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold text-white leading-tight">
+                        {title || "Untitled Episode"}
+                    </h1>
+                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <span className="text-violet-400 font-medium">{podcastName}</span>
+                        <span>•</span>
+                        <span>{pubDate ? new Date(pubDate).toLocaleDateString() : "Unknown Date"}</span>
+                    </div>
+                </div>
+
+                {description && (
+                    <div
+                        className="text-gray-400 leading-relaxed text-sm line-clamp-3 hover:line-clamp-none transition-all cursor-pointer"
+                        dangerouslySetInnerHTML={{ __html: description }}
+                    />
+                )}
+            </div>
+
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
                 Transcript
             </h2>
             {paragraphs.map((para, idx) => (

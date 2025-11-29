@@ -46,7 +46,7 @@ export function Discovery() {
     const handlePodcastClick = (podcast: Podcast) => {
         console.log("Discovery: Podcast clicked", podcast.collectionName)
         selectPodcast(podcast)
-        setActiveView('workspace')
+        setActiveView('podcast_detail')
     }
 
     const displayPodcasts = podcasts.length > 0 ? podcasts : trendingPodcasts

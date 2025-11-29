@@ -27,11 +27,11 @@ export function NoteCard({ note, index, onClick }: NoteCardProps) {
         <div
             onClick={onClick}
             className={cn(
-                "relative bg-[#151515] hover:bg-[#1a1a1a] transition-all duration-300 cursor-pointer group flex flex-col justify-between h-[420px] p-8 border border-white/5 hover:border-white/10",
-                "border-b-2", // Base bottom border width
-                typeColors[note.note_type] || 'border-b-gray-500' // Dynamic color
+                "relative bg-[#151515] hover:bg-[#1a1a1a] transition-all duration-300 cursor-pointer group flex flex-col justify-between h-[420px] p-8 border border-white/5 hover:border-white/10"
             )}
         >
+            {/* Hover Effect Line */}
+            <div className="absolute bottom-0 left-0 h-[2px] bg-orange-500 transition-all duration-500 w-0 group-hover:w-full z-10" />
             {/* Top Section: Number */}
             <div className="text-xs font-mono text-gray-600 mb-6">
                 {formattedIndex}

@@ -7,6 +7,7 @@ import { Sidebar } from "@/components/layout/Sidebar"
 import { Discovery } from "@/components/features/Discovery/Discovery"
 import { Library } from "@/components/features/Library/Library"
 import { Notes } from "@/components/features/Notes/Notes"
+import { PodcastDetail } from "@/components/features/Podcast/PodcastDetail"
 import { Workspace } from "@/components/features/Workspace/Workspace"
 import { AudioPlayer, type AudioPlayerHandle } from "@/components/AudioPlayer"
 
@@ -38,6 +39,7 @@ export default function Home() {
         {activeView === 'discover' && <Discovery />}
         {activeView === 'library' && <Library />}
         {activeView === 'notes' && <Notes />}
+        {activeView === 'podcast_detail' && <PodcastDetail />}
         {activeView === 'workspace' && <Workspace />}
       </div>
 

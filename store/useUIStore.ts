@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-type ActiveView = 'discover' | 'library' | 'notes' | 'workspace'
+type ActiveView = 'discover' | 'library' | 'notes' | 'workspace' | 'podcast_detail'
 
 interface UIState {
     isSidebarCollapsed: boolean
