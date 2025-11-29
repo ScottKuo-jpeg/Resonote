@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server"
 import { getCachedMindmap, saveCachedMindmap } from "@/lib/cache"
 import { AIService } from "@/services/ai.service"
-import { PROMPTS } from "@/lib/prompts"
 import { logger } from "@/lib/logger"
 import { handleAPIError } from "@/lib/errors"
 
 export async function POST(request: Request) {
     try {
-        const { transcript, episodeGuid } = await request.json()
+        const { transcript, episodeGuid, context } = await request.json()
 
         if (!transcript) {
             return NextResponse.json({ error: "Transcript required" }, { status: 400 })
@@ -24,11 +23,7 @@ export async function POST(request: Request) {
 
         logger.info(`Generating mindmap for episode: ${episodeGuid || 'unknown'}`)
 
-        const mindmap = await AIService.generateMindmap(
-            transcript,
-            PROMPTS.mindmap.system,
-            PROMPTS.mindmap.user
-        )
+        const mindmap = await AIService.generateMindmap(transcript, context)
 
         // Save to cache
         if (episodeGuid) {

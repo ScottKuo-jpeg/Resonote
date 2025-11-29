@@ -1,7 +1,5 @@
-"use client"
-
 import { useUIStore } from "@/store/useUIStore"
-import { Compass, Library, BookOpen } from "lucide-react"
+import { Compass, Library, BookOpen, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export function Sidebar() {
@@ -11,6 +9,7 @@ export function Sidebar() {
         { id: 'discover' as const, label: 'Discover', icon: Compass },
         { id: 'library' as const, label: 'Library', icon: Library },
         { id: 'notes' as const, label: 'Notes', icon: BookOpen },
+        { id: 'settings' as const, label: 'Settings', icon: Settings },
     ]
 
     return (

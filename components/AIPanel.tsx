@@ -116,7 +116,16 @@ export function AIPanel({ transcript, episodeGuid, isTranscribing = false }: AIP
             const res = await fetch("/api/summarize", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ transcript, episodeGuid }),
+                body: JSON.stringify({
+                    transcript,
+                    episodeGuid,
+                    context: {
+                        podcastName: selectedPodcast?.collectionName,
+                        podcastDescription: selectedPodcast?.primaryGenreName,
+                        episodeName: currentEpisode?.title,
+                        episodeDescription: currentEpisode?.content_snippet
+                    }
+                }),
             })
             const data = await res.json()
             setSummary(data.summary || "Failed to generate summary")
@@ -134,7 +143,16 @@ export function AIPanel({ transcript, episodeGuid, isTranscribing = false }: AIP
             const res = await fetch("/api/mindmap", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ transcript, episodeGuid }),
+                body: JSON.stringify({
+                    transcript,
+                    episodeGuid,
+                    context: {
+                        podcastName: selectedPodcast?.collectionName,
+                        podcastDescription: selectedPodcast?.primaryGenreName,
+                        episodeName: currentEpisode?.title,
+                        episodeDescription: currentEpisode?.content_snippet
+                    }
+                }),
             })
             const data = await res.json()
             setMindmap(data.mindmap || "Failed to generate mindmap")

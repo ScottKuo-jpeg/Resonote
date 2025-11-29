@@ -48,7 +48,15 @@ export class AIService {
         throw new Error("Use streaming API for chat")
     }
 
-    static async generateSummary(transcript: string): Promise<string> {
+    static async generateSummary(
+        transcript: string,
+        context?: {
+            podcastName?: string
+            podcastDescription?: string
+            episodeName?: string
+            episodeDescription?: string
+        }
+    ): Promise<string> {
         logger.info(`Generating summary for transcript (${estimateTokens(transcript)} tokens)`)
 
         // Truncate if exceeds max length
@@ -57,30 +65,82 @@ export class AIService {
             ? transcript.substring(0, maxLen) + "\n\n[内容过长已截断...]"
             : transcript
 
-        return await this.callLLM([
-            {
-                role: "system",
-                content: "You are an expert podcast summarizer. Provide a structured summary with: 1. Overview, 2. Key Topics, 3. Key Takeaways."
-            },
-            {
-                role: "user",
-                content: `Summarize this transcript:\n\n${safeTranscript}`
+        // Try to get settings from localStorage (client-side) or use defaults
+        let systemPrompt = "You are an expert podcast summarizer. Provide a structured summary with: 1. Overview, 2. Key Topics, 3. Key Takeaways."
+        let userPrompt = `Summarize this transcript:\n\n${safeTranscript}`
+
+        // If running in browser context, try to get custom prompts
+        if (typeof window !== 'undefined') {
+            try {
+                const settings = localStorage.getItem('ai-settings-storage')
+                if (settings) {
+                    const parsed = JSON.parse(settings)
+                    const summaryPrompt = parsed.state?.settings?.summaryPrompt
+                    if (summaryPrompt) {
+                        systemPrompt = summaryPrompt.systemPrompt
+                        // Replace variables in user prompt
+                        userPrompt = summaryPrompt.userPrompt
+                            .replace(/{transcript}/g, safeTranscript)
+                            .replace(/{podcastName}/g, context?.podcastName || '')
+                            .replace(/{podcastDescription}/g, context?.podcastDescription || '')
+                            .replace(/{episodeName}/g, context?.episodeName || '')
+                            .replace(/{episodeDescription}/g, context?.episodeDescription || '')
+                    }
+                }
+            } catch (e) {
+                logger.warn('Failed to load custom prompts, using defaults')
             }
+        }
+
+        return await this.callLLM([
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
         ], CONFIG.AI.MODELS.CHAT)
     }
 
-    static async generateMindmap(transcript: string, systemPrompt: string, userPrompt: (t: string) => string): Promise<string> {
-        // We can reuse the split logic if mindmap needs it, but usually mindmap is generated from the whole text or a summary.
-        // Assuming transcript fits or we use the summary logic. 
-        // For now, let's assume direct call but we might want to use summary for mindmap if transcript is too long.
-
+    static async generateMindmap(
+        transcript: string,
+        context?: {
+            podcastName?: string
+            podcastDescription?: string
+            episodeName?: string
+            episodeDescription?: string
+        }
+    ): Promise<string> {
         // Truncate if too long for single call
         const maxLen = CONFIG.AI.LIMITS.MAX_TRANSCRIPT_LENGTH
         const safeTranscript = transcript.length > maxLen ? transcript.substring(0, maxLen) + "..." : transcript
 
+        // Try to get settings from localStorage (client-side) or use defaults
+        let systemPrompt = "You are an expert at creating mind maps. Generate a hierarchical mind map structure in Markdown format using nested bullet points."
+        let userPrompt = `Create a mind map for this transcript:\n\n${safeTranscript}`
+
+        // If running in browser context, try to get custom prompts
+        if (typeof window !== 'undefined') {
+            try {
+                const settings = localStorage.getItem('ai-settings-storage')
+                if (settings) {
+                    const parsed = JSON.parse(settings)
+                    const mindmapPrompt = parsed.state?.settings?.mindmapPrompt
+                    if (mindmapPrompt) {
+                        systemPrompt = mindmapPrompt.systemPrompt
+                        // Replace variables in user prompt
+                        userPrompt = mindmapPrompt.userPrompt
+                            .replace(/{transcript}/g, safeTranscript)
+                            .replace(/{podcastName}/g, context?.podcastName || '')
+                            .replace(/{podcastDescription}/g, context?.podcastDescription || '')
+                            .replace(/{episodeName}/g, context?.episodeName || '')
+                            .replace(/{episodeDescription}/g, context?.episodeDescription || '')
+                    }
+                }
+            } catch (e) {
+                logger.warn('Failed to load custom mindmap prompts, using defaults')
+            }
+        }
+
         return await this.callLLM([
             { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt(safeTranscript) }
+            { role: "user", content: userPrompt }
         ])
     }
 

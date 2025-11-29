@@ -6,7 +6,7 @@ import { handleAPIError } from "@/lib/errors"
 
 export async function POST(request: Request) {
     try {
-        const { transcript, episodeGuid } = await request.json()
+        const { transcript, episodeGuid, context } = await request.json()
 
         if (!transcript) {
             return NextResponse.json({ error: "Transcript required" }, { status: 400 })
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
         logger.info(`Generating summary for episode: ${episodeGuid || 'unknown'}`)
 
-        const summary = await AIService.generateSummary(transcript)
+        const summary = await AIService.generateSummary(transcript, context)
 
         // Save to cache
         if (episodeGuid) {
